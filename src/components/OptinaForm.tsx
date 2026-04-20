@@ -164,8 +164,13 @@ export default function OptinaForm() {
                 <option>Auto</option>
                 <option>Habitation</option>
                 <option>Mutuelle Santé</option>
+                <option>Assurance Emprunteur</option>
+                <option>PER — Épargne Retraite</option>
                 <option>RC Professionnelle</option>
-                <option>Agricole</option>
+                <option>Multirisque Professionnelle</option>
+                <option>Flotte Automobile</option>
+                <option>Mutuelle Santé Collective</option>
+                <option>Prévoyance TNS</option>
               </select>
             </div>
             <div className={styles.cardField}>
