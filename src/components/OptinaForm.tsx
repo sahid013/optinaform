@@ -12,67 +12,82 @@ export default function OptinaForm() {
   const [sliderValue, setSliderValue] = useState(300);
   const [selectedRadio, setSelectedRadio] = useState<string>('Particulier');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   const totalSteps = formType === 'auto' ? 3 : 2;
   const progressWidth = ((currentStep + 1) / totalSteps) * 100;
 
+  // Check if embedded in iframe
+  useEffect(() => {
+    setIsEmbedded(window.self !== window.top);
+  }, []);
+
+  // Listen for messages from parent (for closing modal)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'OPTINA_CLOSE_MODAL') {
+        setIsModalOpen(false);
+        setCurrentStep(0);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Prevent body scroll when modal is open
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen && !isEmbedded) {
       document.body.style.overflow = 'hidden';
-      // If embedded in iframe, try to prevent parent scroll too
-      if (window.parent !== window) {
-        try {
-          window.parent.document.body.style.overflow = 'hidden';
-        } catch (e) {
-          // Cross-origin, can't access parent
-          console.log('Running in iframe');
-        }
-      }
     } else {
       document.body.style.overflow = '';
-      if (window.parent !== window) {
-        try {
-          window.parent.document.body.style.overflow = '';
-        } catch (e) {
-          // Cross-origin, can't access parent
-        }
-      }
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, isEmbedded]);
 
   const openModal = (type: FormType) => {
     setFormType(type);
     setCurrentStep(0);
-    setIsModalOpen(true);
 
-    // If embedded in iframe, notify parent window
-    if (window.parent !== window) {
+    // If embedded in iframe, send message to parent and don't show modal locally
+    if (isEmbedded) {
       window.parent.postMessage({
-        type: 'OPTINA_MODAL_OPEN',
-        formType: type
+        type: 'OPTINA_OPEN_MODAL',
+        formType: type,
+        currentStep: 0
       }, '*');
+    } else {
+      // Not embedded, show modal normally
+      setIsModalOpen(true);
     }
   };
 
   const closeModal = () => {
-    setIsModalOpen(false);
-    setCurrentStep(0);
-
-    // If embedded in iframe, notify parent window
-    if (window.parent !== window) {
+    if (isEmbedded) {
       window.parent.postMessage({
-        type: 'OPTINA_MODAL_CLOSE'
+        type: 'OPTINA_CLOSE_MODAL'
       }, '*');
+    } else {
+      setIsModalOpen(false);
+      setCurrentStep(0);
     }
   };
 
   const handleNextStep = () => {
     if (currentStep < totalSteps - 1) {
-      setCurrentStep(currentStep + 1);
+      const newStep = currentStep + 1;
+      setCurrentStep(newStep);
+
+      // If embedded, notify parent of step change
+      if (isEmbedded) {
+        window.parent.postMessage({
+          type: 'OPTINA_STEP_CHANGE',
+          step: newStep,
+          formType: formType
+        }, '*');
+      }
     } else {
       alert('Merci ! Votre demande a bien été envoyée. Vous allez être redirigé vers notre calendrier pour réserver votre créneau gratuit.');
       closeModal();
@@ -81,7 +96,17 @@ export default function OptinaForm() {
 
   const handlePrevStep = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      const newStep = currentStep - 1;
+      setCurrentStep(newStep);
+
+      // If embedded, notify parent of step change
+      if (isEmbedded) {
+        window.parent.postMessage({
+          type: 'OPTINA_STEP_CHANGE',
+          step: newStep,
+          formType: formType
+        }, '*');
+      }
     }
   };
 
@@ -179,168 +204,170 @@ export default function OptinaForm() {
         </div>
       </div>
 
-      {/* Multi-step Form Modal */}
-      <div
-        className={`${styles.modalOverlay} ${isModalOpen ? styles.active : ''}`}
-        onClick={handleOverlayClick}
-      >
-        <div className={styles.modal}>
-          <div className={styles.modalHeader}>
-            <h2 className={styles.modalTitle}>
-              {formType === 'auto' ? 'Assurance Auto' : 'Votre devis'}
-            </h2>
-            <button className={styles.modalClose} onClick={closeModal}>
-              ×
-            </button>
-          </div>
-          <div className={styles.progressBar}>
-            <div className={styles.progressFill} style={{width: `${progressWidth}%`}}></div>
-          </div>
-          <div className={styles.modalBody}>
-            {/* Auto Form Steps */}
-            {formType === 'auto' && (
-              <>
-                {currentStep === 0 && (
-                  <div className={styles.formStep}>
-                    <p className={styles.stepQuestion}>Parlez-nous de votre véhicule</p>
-                    <div className={styles.formGroup}>
-                      <label>Marque & modèle</label>
-                      <input type="text" placeholder="Ex : Renault Clio" />
+      {/* Multi-step Form Modal - Only render if not embedded OR if embedded and modal is open */}
+      {(!isEmbedded && isModalOpen) && (
+        <div
+          className={`${styles.modalOverlay} ${styles.active}`}
+          onClick={handleOverlayClick}
+        >
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>
+                {formType === 'auto' ? 'Assurance Auto' : 'Votre devis'}
+              </h2>
+              <button className={styles.modalClose} onClick={closeModal}>
+                ×
+              </button>
+            </div>
+            <div className={styles.progressBar}>
+              <div className={styles.progressFill} style={{width: `${progressWidth}%`}}></div>
+            </div>
+            <div className={styles.modalBody}>
+              {/* Auto Form Steps */}
+              {formType === 'auto' && (
+                <>
+                  {currentStep === 0 && (
+                    <div className={styles.formStep}>
+                      <p className={styles.stepQuestion}>Parlez-nous de votre véhicule</p>
+                      <div className={styles.formGroup}>
+                        <label>Marque & modèle</label>
+                        <input type="text" placeholder="Ex : Renault Clio" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Année de mise en circulation</label>
+                        <input type="text" placeholder="Ex : 2019" />
+                      </div>
                     </div>
-                    <div className={styles.formGroup}>
-                      <label>Année de mise en circulation</label>
-                      <input type="text" placeholder="Ex : 2019" />
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {currentStep === 1 && (
-                  <div className={styles.formStep}>
-                    <p className={styles.stepQuestion}>Votre historique conducteur</p>
-                    <div className={styles.formGroup}>
-                      <label>Bonus-Malus (0.50 → 3.50)</label>
-                      <input type="range" min="50" max="350" defaultValue="100" step="5" />
+                  {currentStep === 1 && (
+                    <div className={styles.formStep}>
+                      <p className={styles.stepQuestion}>Votre historique conducteur</p>
+                      <div className={styles.formGroup}>
+                        <label>Bonus-Malus (0.50 → 3.50)</label>
+                        <input type="range" min="50" max="350" defaultValue="100" step="5" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Date d&apos;obtention du permis</label>
+                        <input type="text" placeholder="MM/AAAA" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Assureur actuel</label>
+                        <input type="text" placeholder="Ex : Maaf, Axa..." />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Montant mensuel actuel</label>
+                        <input type="text" placeholder="Ex : 58 €" />
+                      </div>
                     </div>
-                    <div className={styles.formGroup}>
-                      <label>Date d&apos;obtention du permis</label>
-                      <input type="text" placeholder="MM/AAAA" />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label>Assureur actuel</label>
-                      <input type="text" placeholder="Ex : Maaf, Axa..." />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label>Montant mensuel actuel</label>
-                      <input type="text" placeholder="Ex : 58 €" />
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {currentStep === 2 && (
-                  <div className={styles.formStep}>
-                    <p className={styles.stepQuestion}>Vos coordonnées</p>
-                    <div className={styles.formGroup}>
-                      <label>Prénom</label>
-                      <input type="text" placeholder="Votre prénom" />
+                  {currentStep === 2 && (
+                    <div className={styles.formStep}>
+                      <p className={styles.stepQuestion}>Vos coordonnées</p>
+                      <div className={styles.formGroup}>
+                        <label>Prénom</label>
+                        <input type="text" placeholder="Votre prénom" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Téléphone</label>
+                        <input type="tel" placeholder="06 00 00 00 00" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Email</label>
+                        <input type="email" placeholder="votre@email.fr" />
+                      </div>
+                      <div className={styles.gdprCheck}>
+                        <input type="checkbox" id="gdpr" />
+                        <label htmlFor="gdpr">
+                          J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
+                        </label>
+                      </div>
                     </div>
-                    <div className={styles.formGroup}>
-                      <label>Téléphone</label>
-                      <input type="tel" placeholder="06 00 00 00 00" />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label>Email</label>
-                      <input type="email" placeholder="votre@email.fr" />
-                    </div>
-                    <div className={styles.gdprCheck}>
-                      <input type="checkbox" id="gdpr" />
-                      <label htmlFor="gdpr">
-                        J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+                </>
+              )}
 
-            {/* Generic Form Steps */}
-            {formType === 'generic' && (
-              <>
-                {currentStep === 0 && (
-                  <div className={styles.formStep}>
-                    <p className={styles.stepQuestion}>Parlez-nous de votre situation</p>
-                    <div className={styles.formGroup}>
-                      <label>Votre profil</label>
-                      <div className={styles.radioGroup}>
-                        <div
-                          className={`${styles.radioOption} ${selectedRadio === 'Particulier' ? styles.selected : ''}`}
-                          onClick={() => handleRadioSelect('Particulier')}
-                        >
-                          Particulier
-                        </div>
-                        <div
-                          className={`${styles.radioOption} ${selectedRadio === 'Professionnel' ? styles.selected : ''}`}
-                          onClick={() => handleRadioSelect('Professionnel')}
-                        >
-                          Professionnel
+              {/* Generic Form Steps */}
+              {formType === 'generic' && (
+                <>
+                  {currentStep === 0 && (
+                    <div className={styles.formStep}>
+                      <p className={styles.stepQuestion}>Parlez-nous de votre situation</p>
+                      <div className={styles.formGroup}>
+                        <label>Votre profil</label>
+                        <div className={styles.radioGroup}>
+                          <div
+                            className={`${styles.radioOption} ${selectedRadio === 'Particulier' ? styles.selected : ''}`}
+                            onClick={() => handleRadioSelect('Particulier')}
+                          >
+                            Particulier
+                          </div>
+                          <div
+                            className={`${styles.radioOption} ${selectedRadio === 'Professionnel' ? styles.selected : ''}`}
+                            onClick={() => handleRadioSelect('Professionnel')}
+                          >
+                            Professionnel
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {currentStep === 1 && (
-                  <div className={styles.formStep}>
-                    <p className={styles.stepQuestion}>Vos coordonnées</p>
-                    <div className={styles.formGroup}>
-                      <label>Prénom</label>
-                      <input type="text" placeholder="Votre prénom" />
+                  {currentStep === 1 && (
+                    <div className={styles.formStep}>
+                      <p className={styles.stepQuestion}>Vos coordonnées</p>
+                      <div className={styles.formGroup}>
+                        <label>Prénom</label>
+                        <input type="text" placeholder="Votre prénom" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Téléphone</label>
+                        <input type="tel" placeholder="06 00 00 00 00" />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Email</label>
+                        <input type="email" placeholder="votre@email.fr" />
+                      </div>
+                      <div className={styles.gdprCheck}>
+                        <input type="checkbox" />
+                        <label>
+                          J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
+                        </label>
+                      </div>
                     </div>
-                    <div className={styles.formGroup}>
-                      <label>Téléphone</label>
-                      <input type="tel" placeholder="06 00 00 00 00" />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label>Email</label>
-                      <input type="email" placeholder="votre@email.fr" />
-                    </div>
-                    <div className={styles.gdprCheck}>
-                      <input type="checkbox" />
-                      <label>
-                        J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className={styles.modalFooter}>
-            {currentStep > 0 && (
-              <button className={styles.btnPrev} onClick={handlePrevStep}>
-                Retour
-              </button>
-            )}
-            <button className={styles.btnNext} onClick={handleNextStep}>
-              {currentStep === totalSteps - 1 ? (
-                <>
-                  Envoyer ma demande
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M2 8l12-6-6 12-2-4z" fill="white"/>
-                  </svg>
-                </>
-              ) : (
-                <>
-                  Suivant
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  )}
                 </>
               )}
-            </button>
+            </div>
+
+            <div className={styles.modalFooter}>
+              {currentStep > 0 && (
+                <button className={styles.btnPrev} onClick={handlePrevStep}>
+                  Retour
+                </button>
+              )}
+              <button className={styles.btnNext} onClick={handleNextStep}>
+                {currentStep === totalSteps - 1 ? (
+                  <>
+                    Envoyer ma demande
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M2 8l12-6-6 12-2-4z" fill="white"/>
+                    </svg>
+                  </>
+                ) : (
+                  <>
+                    Suivant
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M3 8h10M9 4l4 4-4 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

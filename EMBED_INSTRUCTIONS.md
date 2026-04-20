@@ -1,44 +1,48 @@
-# Embedding OptinaForm in Framer
+# Embedding OptinaForm in Framer - UPDATED
 
-This guide explains how to embed the OptinaForm in your Framer website with the modal opening in the parent window instead of inside the iframe.
+This form is designed to work in an iframe and will communicate with the parent window to show the modal outside the iframe boundaries.
+
+## How It Works
+
+When embedded in an iframe:
+1. The form detects it's in an iframe automatically
+2. When you click a CTA button, it sends a message to the parent window
+3. The parent window receives the message and creates a modal overlay
+4. The modal appears in the parent page viewport, not inside the iframe
 
 ## Step 1: Embed the Form in Framer
 
-1. In Framer, add an **Embed** component (or **iframe** code embed)
-2. Set the iframe URL to your deployed Next.js form (e.g., Vercel URL)
-3. Set the iframe dimensions (e.g., width: 100%, height: 600px)
+Add an **iframe** or **Embed** component in Framer with this code:
 
-Example iframe code:
 ```html
 <iframe
-  src="https://your-form-url.vercel.app"
-  width="100%"
-  height="600px"
-  frameborder="0"
+  src="https://your-deployed-form-url.vercel.app"
   id="optina-form-iframe"
+  style="width: 100%; height: 600px; border: none;"
+  frameborder="0"
 ></iframe>
 ```
 
-## Step 2: Add Modal Handler to Parent Page
+## Step 2: Add Modal Handler JavaScript to Your Framer Page
 
-Add this code to your Framer page using a **Code Override** or **Custom Code** component:
+In Framer, add a **Custom Code** component or use **Page Settings > Start of <body> tag** to add this script:
 
 ```html
 <script>
-  // Listen for messages from the iframe
+(function() {
+  // Listen for messages from the OptinaForm iframe
   window.addEventListener('message', function(event) {
-    // Check if message is from OptinaForm
-    if (event.data.type === 'OPTINA_MODAL_OPEN') {
-      // Show modal overlay in parent window
-      showOptinaModal(event.data.formType);
-    } else if (event.data.type === 'OPTINA_MODAL_CLOSE') {
-      // Hide modal overlay in parent window
-      hideOptinaModal();
+
+    if (event.data.type === 'OPTINA_OPEN_MODAL') {
+      openOptinaModal(event.data.formType);
+    }
+    else if (event.data.type === 'OPTINA_CLOSE_MODAL') {
+      closeOptinaModal();
     }
   });
 
-  function showOptinaModal(formType) {
-    // Create modal overlay in parent window
+  function openOptinaModal(formType) {
+    // Create modal overlay
     const overlay = document.createElement('div');
     overlay.id = 'optina-modal-overlay';
     overlay.style.cssText = `
@@ -58,14 +62,15 @@ Add this code to your Framer page using a **Code Override** or **Custom Code** c
       padding: 20px;
     `;
 
-    // Create iframe for the form modal
+    // Create iframe for modal content
     const modalIframe = document.createElement('iframe');
     modalIframe.id = 'optina-modal-iframe';
-    modalIframe.src = 'https://your-form-url.vercel.app?modal=true&type=' + formType;
+    modalIframe.src = 'https://your-deployed-form-url.vercel.app?modal=' + formType;
     modalIframe.style.cssText = `
       width: 100%;
-      max-width: 480px;
-      height: 90vh;
+      max-width: 500px;
+      height: 80vh;
+      max-height: 700px;
       border: none;
       border-radius: 4px;
       background: white;
@@ -78,59 +83,119 @@ Add this code to your Framer page using a **Code Override** or **Custom Code** c
     // Close on overlay click
     overlay.addEventListener('click', function(e) {
       if (e.target === overlay) {
-        hideOptinaModal();
+        closeOptinaModal();
       }
     });
+
+    // Close on Escape key
+    document.addEventListener('keydown', handleEscapeKey);
   }
 
-  function hideOptinaModal() {
+  function handleEscapeKey(e) {
+    if (e.key === 'Escape') {
+      closeOptinaModal();
+    }
+  }
+
+  function closeOptinaModal() {
     const overlay = document.getElementById('optina-modal-overlay');
     if (overlay) {
       overlay.remove();
       document.body.style.overflow = '';
+      document.removeEventListener('keydown', handleEscapeKey);
+
+      // Notify iframe that modal is closed
+      const mainIframe = document.getElementById('optina-form-iframe');
+      if (mainIframe && mainIframe.contentWindow) {
+        mainIframe.contentWindow.postMessage({
+          type: 'OPTINA_CLOSE_MODAL'
+        }, '*');
+      }
     }
   }
+})();
 </script>
 ```
 
-## Step 3: Alternative Simple Solution
+## Step 3: Deploy Your Form
 
-If you don't want to use postMessage, you can configure the iframe to allow the modal to overlay:
+1. Deploy your Next.js form to Vercel:
+   ```bash
+   npm run build
+   vercel --prod
+   ```
 
-```css
-/* Add to your Framer page CSS */
-#optina-form-iframe {
-  position: relative;
-  z-index: 1;
-}
+2. Copy the deployment URL (e.g., `https://your-form.vercel.app`)
 
-/* Or embed the entire form in a full-page modal from the start */
+3. Update the iframe `src` and modalIframe `src` in the above code with your actual URL
+
+## Step 4: Test
+
+1. Load your Framer page
+2. Click on "Comparer mes offres" or "Optimiser ma facture"
+3. The modal should appear in the parent page viewport, covering the entire screen
+
+## Customization Options
+
+### Change Modal Size
+In the `openOptinaModal` function, modify:
+```javascript
+modalIframe.style.cssText = `
+  width: 100%;
+  max-width: 600px;  // Change this
+  height: 90vh;      // Change this
+  ...
+`;
 ```
 
-## Step 4: Deploy Your Form
+### Change Overlay Background
+Modify the overlay background color:
+```javascript
+overlay.style.cssText = `
+  ...
+  background: rgba(0, 0, 0, 0.8);  // Darker
+  backdrop-filter: blur(8px);       // More blur
+  ...
+`;
+```
 
-1. Deploy your Next.js form to Vercel or another hosting service
-2. Copy the deployment URL
-3. Use that URL in your Framer iframe embed
+### Add Animation
+Add a fade-in animation:
+```javascript
+overlay.style.opacity = '0';
+overlay.style.transition = 'opacity 0.3s';
+document.body.appendChild(overlay);
+setTimeout(() => { overlay.style.opacity = '1'; }, 10);
+```
+
+## Troubleshooting
+
+**Modal not appearing:**
+- Check browser console for errors
+- Verify the script is loaded (check Network tab)
+- Make sure the iframe URL is correct
+
+**Modal appears inside iframe:**
+- Verify the postMessage listener script is active
+- Check that both URLs use HTTPS (not mixing HTTP/HTTPS)
+- Clear browser cache
+
+**Console shows "Cross-origin" errors:**
+- This is normal and expected
+- The form will still work correctly
 
 ## Notes
 
 - The form automatically detects when it's embedded in an iframe
-- It sends `postMessage` events to the parent window when modal opens/closes
-- The modal will have a very high z-index (999999) to appear above other content
-- Make sure your Framer page has the message listener code active
+- No modal is rendered inside the iframe when embedded
+- All modal rendering happens in the parent window
+- The modal will have z-index: 999999 to appear above all content
+- Communication uses postMessage API which is secure and cross-origin compatible
 
-## Troubleshooting
+## Support
 
-**Modal not appearing in parent:**
-- Check browser console for errors
-- Verify the postMessage listener is active
-- Ensure the iframe URL is correct
-
-**Modal appears inside iframe:**
-- Make sure the parent page has the message listener code
-- Check that the iframe and parent are communicating (check console logs)
-
-**Cross-origin issues:**
-- Deploy both the form and Framer site to the same domain if possible
-- Or ensure CORS is properly configured
+If you encounter issues:
+1. Check the browser console for error messages
+2. Verify both the iframe src and modal iframe src use the same deployed URL
+3. Make sure your Framer page has the JavaScript code active
+4. Test in different browsers (Chrome, Safari, Firefox)
