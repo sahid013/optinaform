@@ -69,8 +69,8 @@ In Framer, add a **Custom Code** component or use **Page Settings > Start of <bo
     modalIframe.style.cssText = `
       width: 100%;
       max-width: 500px;
-      height: 80vh;
-      max-height: 700px;
+      height: 600px;
+      max-height: 90vh;
       border: none;
       border-radius: 4px;
       background: white;
@@ -136,8 +136,9 @@ In the `openOptinaModal` function, modify:
 ```javascript
 modalIframe.style.cssText = `
   width: 100%;
-  max-width: 600px;  // Change this
-  height: 90vh;      // Change this
+  max-width: 500px;     // Change width
+  height: 600px;        // Change height
+  max-height: 90vh;     // Maximum height
   ...
 `;
 ```
