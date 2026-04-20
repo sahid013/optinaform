@@ -16,7 +16,7 @@ Add an **iframe** or **Embed** component in Framer with this code:
 
 ```html
 <iframe
-  src="https://your-deployed-form-url.vercel.app"
+  src="https://optinaform.vercel.app"
   id="optina-form-iframe"
   style="width: 100%; height: 600px; border: none;"
   frameborder="0"
@@ -65,7 +65,7 @@ In Framer, add a **Custom Code** component or use **Page Settings > Start of <bo
     // Create iframe for modal content
     const modalIframe = document.createElement('iframe');
     modalIframe.id = 'optina-modal-iframe';
-    modalIframe.src = 'https://your-deployed-form-url.vercel.app?modal=' + formType;
+    modalIframe.src = 'https://optinaform.vercel.app?modal=' + formType;
     modalIframe.style.cssText = `
       width: 100%;
       max-width: 500px;
@@ -117,17 +117,11 @@ In Framer, add a **Custom Code** component or use **Page Settings > Start of <bo
 </script>
 ```
 
-## Step 3: Deploy Your Form
+## Step 3: Test It Out
 
-1. Deploy your Next.js form to Vercel:
-   ```bash
-   npm run build
-   vercel --prod
-   ```
+The form is already deployed at: **https://optinaform.vercel.app**
 
-2. Copy the deployment URL (e.g., `https://your-form.vercel.app`)
-
-3. Update the iframe `src` and modalIframe `src` in the above code with your actual URL
+Simply copy the code from Steps 1 and 2 above - the URLs are already configured!
 
 ## Step 4: Test
 
@@ -196,6 +190,8 @@ setTimeout(() => { overlay.style.opacity = '1'; }, 10);
 
 If you encounter issues:
 1. Check the browser console for error messages
-2. Verify both the iframe src and modal iframe src use the same deployed URL
-3. Make sure your Framer page has the JavaScript code active
+2. Make sure your Framer page has the JavaScript code active in Page Settings > Start of <body> tag
+3. Verify the iframe is loading correctly (you should see the form)
 4. Test in different browsers (Chrome, Safari, Firefox)
+
+**Form URL:** https://optinaform.vercel.app
