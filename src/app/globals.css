@@ -22,11 +22,12 @@
 
 html {
   scroll-behavior: smooth;
+  background: transparent;
 }
 
 body {
   font-family: var(--font-sans);
-  background: var(--white);
+  background: transparent;
   color: var(--black);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
