@@ -20,8 +20,24 @@ export default function OptinaForm() {
   useEffect(() => {
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
+      // If embedded in iframe, try to prevent parent scroll too
+      if (window.parent !== window) {
+        try {
+          window.parent.document.body.style.overflow = 'hidden';
+        } catch (e) {
+          // Cross-origin, can't access parent
+          console.log('Running in iframe');
+        }
+      }
     } else {
       document.body.style.overflow = '';
+      if (window.parent !== window) {
+        try {
+          window.parent.document.body.style.overflow = '';
+        } catch (e) {
+          // Cross-origin, can't access parent
+        }
+      }
     }
     return () => {
       document.body.style.overflow = '';
@@ -32,11 +48,26 @@ export default function OptinaForm() {
     setFormType(type);
     setCurrentStep(0);
     setIsModalOpen(true);
+
+    // If embedded in iframe, notify parent window
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'OPTINA_MODAL_OPEN',
+        formType: type
+      }, '*');
+    }
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setCurrentStep(0);
+
+    // If embedded in iframe, notify parent window
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'OPTINA_MODAL_CLOSE'
+      }, '*');
+    }
   };
 
   const handleNextStep = () => {
