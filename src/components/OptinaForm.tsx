@@ -13,13 +13,25 @@ export default function OptinaForm() {
   const [selectedRadio, setSelectedRadio] = useState<string>('Particulier');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
+  const [isModalOnlyMode, setIsModalOnlyMode] = useState(false);
 
   const totalSteps = formType === 'auto' ? 3 : 2;
   const progressWidth = ((currentStep + 1) / totalSteps) * 100;
 
-  // Check if embedded in iframe
+  // Check if embedded in iframe and if modal should be shown from URL
   useEffect(() => {
     setIsEmbedded(window.self !== window.top);
+
+    // Check URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const modalParam = params.get('modal');
+
+    if (modalParam && (modalParam === 'auto' || modalParam === 'generic')) {
+      // URL has modal parameter, open modal automatically and hide initial card
+      setFormType(modalParam as FormType);
+      setIsModalOpen(true);
+      setIsModalOnlyMode(true);
+    }
   }, []);
 
   // Listen for messages from parent (for closing modal)
@@ -126,6 +138,7 @@ export default function OptinaForm() {
 
   return (
     <div className={styles.formContainer}>
+      {!isModalOnlyMode && (
       <div className={styles.heroCard}>
         <div className={styles.cardTabs}>
           <button
@@ -203,12 +216,13 @@ export default function OptinaForm() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Multi-step Form Modal - Only render if not embedded OR if embedded and modal is open */}
-      {(!isEmbedded && isModalOpen) && (
+      {/* Multi-step Form Modal - Only render if not embedded OR if embedded and modal is open OR if modal-only mode */}
+      {(((!isEmbedded && isModalOpen) || isModalOnlyMode)) && (
         <div
-          className={`${styles.modalOverlay} ${styles.active}`}
-          onClick={handleOverlayClick}
+          className={`${isModalOnlyMode ? styles.modalOnlyContainer : styles.modalOverlay} ${styles.active}`}
+          onClick={isModalOnlyMode ? undefined : handleOverlayClick}
         >
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
