@@ -5,6 +5,9 @@ import styles from './OptinaForm.module.css';
 
 type FormType = 'auto' | 'generic';
 
+// Webhook URL
+const WEBHOOK_URL = 'https://nassimaali.app.n8n.cloud/webhook/024b4d77-576e-4656-9ab4-00b00ab0bd11';
+
 export default function OptinaForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [formType, setFormType] = useState<FormType>('auto');
@@ -14,6 +17,30 @@ export default function OptinaForm() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [isModalOnlyMode, setIsModalOnlyMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Hero form fields (Assurance)
+  const [heroInsuranceType, setHeroInsuranceType] = useState('Auto');
+  const [heroProfile, setHeroProfile] = useState('Particulier');
+
+  // Hero form fields (Énergie)
+  const [heroEnergyType, setHeroEnergyType] = useState('Électricité');
+
+  // Multi-step form fields (Auto/Insurance)
+  const [vehicleBrand, setVehicleBrand] = useState('');
+  const [vehicleYear, setVehicleYear] = useState('');
+  const [bonusMalus, setBonusMalus] = useState(100);
+  const [licenseDate, setLicenseDate] = useState('');
+  const [currentInsurer, setCurrentInsurer] = useState('');
+  const [currentMonthlyCost, setCurrentMonthlyCost] = useState('');
+
+  // Multi-step form fields (Contact info - shared)
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [gdprConsent, setGdprConsent] = useState(false);
 
   const totalSteps = formType === 'auto' ? 3 : 2;
   const progressWidth = ((currentStep + 1) / totalSteps) * 100;
@@ -84,11 +111,66 @@ export default function OptinaForm() {
     } else {
       setIsModalOpen(false);
       setCurrentStep(0);
+      setShowSuccess(false);
     }
   };
 
-  const handleNextStep = () => {
+  // Webhook submission function
+  const submitToWebhook = async (data: any) => {
+    try {
+      console.log('Submitting to webhook:', data);
+
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      // Check if response is OK (status 200-299)
+      if (response.ok) {
+        // Try to parse response, but don't fail if it's not JSON
+        try {
+          const result = await response.json();
+          console.log('Success response:', result);
+        } catch (e) {
+          const text = await response.text();
+          console.log('Success response (non-JSON):', text);
+        }
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error('Response error:', errorText);
+        throw new Error(`Failed to submit form: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+
+      // Check if it's a network error
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        alert('Erreur de connexion. Vérifiez votre connexion internet.');
+      } else {
+        alert(`Erreur: ${error}`);
+      }
+
+      return false;
+    }
+  };
+
+  const handleNextStep = async () => {
     if (currentStep < totalSteps - 1) {
+      // Validate current step before proceeding
+      if (formType === 'auto' && currentStep === 0) {
+        if (!vehicleBrand || !vehicleYear) {
+          alert('Veuillez remplir tous les champs obligatoires.');
+          return;
+        }
+      }
+
       const newStep = currentStep + 1;
       setCurrentStep(newStep);
 
@@ -101,9 +183,78 @@ export default function OptinaForm() {
         }, '*');
       }
     } else {
-      alert('Merci ! Votre demande a bien été envoyée. Vous allez être redirigé vers notre calendrier pour réserver votre créneau gratuit.');
-      closeModal();
+      // Validate final step
+      if (!firstName || !lastName || !email || !phone) {
+        alert('Veuillez remplir tous les champs obligatoires.');
+        return;
+      }
+
+      if (!gdprConsent) {
+        alert('Veuillez accepter la politique de confidentialité pour continuer.');
+        return;
+      }
+
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert('Veuillez entrer une adresse email valide.');
+        return;
+      }
+
+      // Final step - submit to webhook
+      setIsSubmitting(true);
+
+      const formData: any = {
+        firstName,
+        lastName,
+        email,
+        phone,
+        formType,
+        submittedAt: new Date().toISOString(),
+      };
+
+      // Add form-specific data
+      if (formType === 'auto') {
+        formData.insuranceType = heroInsuranceType;
+        formData.profile = heroProfile;
+        formData.vehicleBrand = vehicleBrand;
+        formData.vehicleYear = vehicleYear;
+        formData.bonusMalus = bonusMalus / 100; // Convert to decimal
+        formData.licenseDate = licenseDate;
+        formData.currentInsurer = currentInsurer;
+        formData.currentMonthlyCost = currentMonthlyCost;
+      } else if (formType === 'generic') {
+        formData.energyType = heroEnergyType;
+        formData.monthlyBill = sliderValue;
+        formData.profile = selectedRadio;
+      }
+
+      const success = await submitToWebhook(formData);
+      setIsSubmitting(false);
+
+      if (success) {
+        // Show success screen
+        setShowSuccess(true);
+        // Reset form fields
+        resetForm();
+      } else {
+        alert('Une erreur s\'est produite. Veuillez réessayer.');
+      }
     }
+  };
+
+  const resetForm = () => {
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setPhone('');
+    setVehicleBrand('');
+    setVehicleYear('');
+    setBonusMalus(100);
+    setLicenseDate('');
+    setCurrentInsurer('');
+    setCurrentMonthlyCost('');
+    setGdprConsent(false);
   };
 
   const handlePrevStep = () => {
@@ -160,7 +311,7 @@ export default function OptinaForm() {
           <div className={`${styles.tabContent} ${activeTab === 'assurance' ? styles.active : ''}`}>
             <div className={styles.cardField}>
               <label>Quel type d&apos;assurance ?</label>
-              <select>
+              <select value={heroInsuranceType} onChange={(e) => setHeroInsuranceType(e.target.value)}>
                 <option>Auto</option>
                 <option>Habitation</option>
                 <option>Mutuelle Santé</option>
@@ -175,7 +326,7 @@ export default function OptinaForm() {
             </div>
             <div className={styles.cardField}>
               <label>Votre profil</label>
-              <select>
+              <select value={heroProfile} onChange={(e) => setHeroProfile(e.target.value)}>
                 <option>Particulier</option>
                 <option>Professionnel</option>
               </select>
@@ -191,7 +342,7 @@ export default function OptinaForm() {
           <div className={`${styles.tabContent} ${activeTab === 'energie' ? styles.active : ''}`}>
             <div className={styles.cardField}>
               <label>Type d&apos;énergie</label>
-              <select>
+              <select value={heroEnergyType} onChange={(e) => setHeroEnergyType(e.target.value)}>
                 <option>Électricité</option>
                 <option>Gaz</option>
                 <option>Électricité + Gaz</option>
@@ -242,132 +393,246 @@ export default function OptinaForm() {
               <div className={styles.progressFill} style={{width: `${progressWidth}%`}}></div>
             </div>
             <div className={styles.modalBody}>
-              {/* Auto Form Steps */}
-              {formType === 'auto' && (
+              {/* Success Screen */}
+              {showSuccess ? (
+                <div className={styles.successScreen}>
+                  <div className={styles.successIcon}>
+                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                      <circle cx="40" cy="40" r="38" fill="#10B981" fillOpacity="0.1" stroke="#10B981" strokeWidth="2"/>
+                      <path d="M25 40L35 50L55 30" stroke="#10B981" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <h3 className={styles.successTitle}>Demande envoyée avec succès !</h3>
+                  <p className={styles.successMessage}>
+                    Merci ! Votre demande a bien été envoyée. Vous allez être redirigé vers notre calendrier pour réserver votre créneau gratuit.
+                  </p>
+                  <button className={styles.btnSuccess} onClick={closeModal}>
+                    Fermer
+                  </button>
+                </div>
+              ) : (
                 <>
-                  {currentStep === 0 && (
-                    <div className={styles.formStep}>
-                      <p className={styles.stepQuestion}>Parlez-nous de votre véhicule</p>
-                      <div className={styles.formGroup}>
-                        <label>Marque & modèle</label>
-                        <input type="text" placeholder="Ex : Renault Clio" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Année de mise en circulation</label>
-                        <input type="text" placeholder="Ex : 2019" />
-                      </div>
-                    </div>
-                  )}
-
-                  {currentStep === 1 && (
-                    <div className={styles.formStep}>
-                      <p className={styles.stepQuestion}>Votre historique conducteur</p>
-                      <div className={styles.formGroup}>
-                        <label>Bonus-Malus (0.50 → 3.50)</label>
-                        <input type="range" min="50" max="350" defaultValue="100" step="5" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Date d&apos;obtention du permis</label>
-                        <input type="text" placeholder="MM/AAAA" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Assureur actuel</label>
-                        <input type="text" placeholder="Ex : Maaf, Axa..." />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Montant mensuel actuel</label>
-                        <input type="text" placeholder="Ex : 58 €" />
-                      </div>
-                    </div>
-                  )}
-
-                  {currentStep === 2 && (
-                    <div className={styles.formStep}>
-                      <p className={styles.stepQuestion}>Vos coordonnées</p>
-                      <div className={styles.formGroup}>
-                        <label>Prénom</label>
-                        <input type="text" placeholder="Votre prénom" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Téléphone</label>
-                        <input type="tel" placeholder="06 00 00 00 00" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Email</label>
-                        <input type="email" placeholder="votre@email.fr" />
-                      </div>
-                      <div className={styles.gdprCheck}>
-                        <input type="checkbox" id="gdpr" />
-                        <label htmlFor="gdpr">
-                          J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Generic Form Steps */}
-              {formType === 'generic' && (
-                <>
-                  {currentStep === 0 && (
-                    <div className={styles.formStep}>
-                      <p className={styles.stepQuestion}>Parlez-nous de votre situation</p>
-                      <div className={styles.formGroup}>
-                        <label>Votre profil</label>
-                        <div className={styles.radioGroup}>
-                          <div
-                            className={`${styles.radioOption} ${selectedRadio === 'Particulier' ? styles.selected : ''}`}
-                            onClick={() => handleRadioSelect('Particulier')}
-                          >
-                            Particulier
+                  {/* Auto Form Steps */}
+                  {formType === 'auto' && (
+                    <>
+                      {currentStep === 0 && (
+                        <div className={styles.formStep}>
+                          <p className={styles.stepQuestion}>Parlez-nous de votre véhicule</p>
+                          <div className={styles.formGroup}>
+                            <label>Marque & modèle</label>
+                            <input
+                              type="text"
+                              placeholder="Ex : Renault Clio"
+                              value={vehicleBrand}
+                              onChange={(e) => setVehicleBrand(e.target.value)}
+                            />
                           </div>
-                          <div
-                            className={`${styles.radioOption} ${selectedRadio === 'Professionnel' ? styles.selected : ''}`}
-                            onClick={() => handleRadioSelect('Professionnel')}
-                          >
-                            Professionnel
+                          <div className={styles.formGroup}>
+                            <label>Année de mise en circulation</label>
+                            <input
+                              type="text"
+                              placeholder="Ex : 2019"
+                              value={vehicleYear}
+                              onChange={(e) => setVehicleYear(e.target.value)}
+                            />
                           </div>
                         </div>
-                      </div>
-                    </div>
+                      )}
+
+                      {currentStep === 1 && (
+                        <div className={styles.formStep}>
+                          <p className={styles.stepQuestion}>Votre historique conducteur</p>
+                          <div className={styles.formGroup}>
+                            <label>Bonus-Malus (0.50 → 3.50) — {(bonusMalus / 100).toFixed(2)}</label>
+                            <input
+                              type="range"
+                              min="50"
+                              max="350"
+                              value={bonusMalus}
+                              step="5"
+                              onChange={(e) => setBonusMalus(Number(e.target.value))}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Date d&apos;obtention du permis</label>
+                            <input
+                              type="text"
+                              placeholder="MM/AAAA"
+                              value={licenseDate}
+                              onChange={(e) => setLicenseDate(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Assureur actuel</label>
+                            <input
+                              type="text"
+                              placeholder="Ex : Maaf, Axa..."
+                              value={currentInsurer}
+                              onChange={(e) => setCurrentInsurer(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Montant mensuel actuel</label>
+                            <input
+                              type="text"
+                              placeholder="Ex : 58 €"
+                              value={currentMonthlyCost}
+                              onChange={(e) => setCurrentMonthlyCost(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {currentStep === 2 && (
+                        <div className={styles.formStep}>
+                          <p className={styles.stepQuestion}>Vos coordonnées</p>
+                          <div className={styles.formGroup}>
+                            <label>Prénom</label>
+                            <input
+                              type="text"
+                              placeholder="Votre prénom"
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Nom</label>
+                            <input
+                              type="text"
+                              placeholder="Votre nom"
+                              value={lastName}
+                              onChange={(e) => setLastName(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Téléphone</label>
+                            <input
+                              type="tel"
+                              placeholder="06 00 00 00 00"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Email</label>
+                            <input
+                              type="email"
+                              placeholder="votre@email.fr"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.gdprCheck}>
+                            <input
+                              type="checkbox"
+                              id="gdpr"
+                              checked={gdprConsent}
+                              onChange={(e) => setGdprConsent(e.target.checked)}
+                            />
+                            <label htmlFor="gdpr">
+                              J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {currentStep === 1 && (
-                    <div className={styles.formStep}>
-                      <p className={styles.stepQuestion}>Vos coordonnées</p>
-                      <div className={styles.formGroup}>
-                        <label>Prénom</label>
-                        <input type="text" placeholder="Votre prénom" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Téléphone</label>
-                        <input type="tel" placeholder="06 00 00 00 00" />
-                      </div>
-                      <div className={styles.formGroup}>
-                        <label>Email</label>
-                        <input type="email" placeholder="votre@email.fr" />
-                      </div>
-                      <div className={styles.gdprCheck}>
-                        <input type="checkbox" />
-                        <label>
-                          J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
-                        </label>
-                      </div>
-                    </div>
+                  {/* Generic Form Steps */}
+                  {formType === 'generic' && (
+                    <>
+                      {currentStep === 0 && (
+                        <div className={styles.formStep}>
+                          <p className={styles.stepQuestion}>Parlez-nous de votre situation</p>
+                          <div className={styles.formGroup}>
+                            <label>Votre profil</label>
+                            <div className={styles.radioGroup}>
+                              <div
+                                className={`${styles.radioOption} ${selectedRadio === 'Particulier' ? styles.selected : ''}`}
+                                onClick={() => handleRadioSelect('Particulier')}
+                              >
+                                Particulier
+                              </div>
+                              <div
+                                className={`${styles.radioOption} ${selectedRadio === 'Professionnel' ? styles.selected : ''}`}
+                                onClick={() => handleRadioSelect('Professionnel')}
+                              >
+                                Professionnel
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {currentStep === 1 && (
+                        <div className={styles.formStep}>
+                          <p className={styles.stepQuestion}>Vos coordonnées</p>
+                          <div className={styles.formGroup}>
+                            <label>Prénom</label>
+                            <input
+                              type="text"
+                              placeholder="Votre prénom"
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Nom</label>
+                            <input
+                              type="text"
+                              placeholder="Votre nom"
+                              value={lastName}
+                              onChange={(e) => setLastName(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Téléphone</label>
+                            <input
+                              type="tel"
+                              placeholder="06 00 00 00 00"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.formGroup}>
+                            <label>Email</label>
+                            <input
+                              type="email"
+                              placeholder="votre@email.fr"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                            />
+                          </div>
+                          <div className={styles.gdprCheck}>
+                            <input
+                              type="checkbox"
+                              id="gdpr-generic"
+                              checked={gdprConsent}
+                              onChange={(e) => setGdprConsent(e.target.checked)}
+                            />
+                            <label htmlFor="gdpr-generic">
+                              J&apos;accepte que mes données soient utilisées pour traiter ma demande de devis, conformément à la politique de confidentialité d&apos;OPTINA.
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
             </div>
 
+            {!showSuccess && (
             <div className={styles.modalFooter}>
               {currentStep > 0 && (
-                <button className={styles.btnPrev} onClick={handlePrevStep}>
+                <button className={styles.btnPrev} onClick={handlePrevStep} disabled={isSubmitting}>
                   Retour
                 </button>
               )}
-              <button className={styles.btnNext} onClick={handleNextStep}>
-                {currentStep === totalSteps - 1 ? (
+              <button className={styles.btnNext} onClick={handleNextStep} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  'Envoi en cours...'
+                ) : currentStep === totalSteps - 1 ? (
                   <>
                     Envoyer ma demande
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -384,6 +649,7 @@ export default function OptinaForm() {
                 )}
               </button>
             </div>
+            )}
           </div>
         </div>
       )}
