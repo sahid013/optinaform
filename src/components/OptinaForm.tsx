@@ -6,7 +6,7 @@ import styles from './OptinaForm.module.css';
 type FormType = 'auto' | 'generic';
 
 // Webhook URL
-const WEBHOOK_URL = 'https://nassimaali.app.n8n.cloud/webhook/024b4d77-576e-4656-9ab4-00b00ab0bd11';
+const WEBHOOK_URL = 'https://nassimaali.app.n8n.cloud/webhook-test/024b4d77-576e-4656-9ab4-00b00ab0bd11';
 
 export default function OptinaForm() {
   const [currentStep, setCurrentStep] = useState(0);
