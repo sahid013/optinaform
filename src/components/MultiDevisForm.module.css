@@ -1,0 +1,391 @@
+.container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--beige);
+  padding: 60px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+.formCard {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 4px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: none;
+  border: 1px solid var(--border);
+  overflow: visible;
+  margin-bottom: 40px;
+}
+
+.insuranceTypes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 20px;
+  background: var(--off-white);
+  border-bottom: 1px solid var(--border);
+}
+
+.insuranceBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--gray);
+  font-size: 13px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+
+.insuranceBtn:hover {
+  background: var(--off-white);
+  border-color: var(--black);
+  color: var(--black);
+}
+
+.insuranceBtn.selected {
+  background: var(--black);
+  border-color: var(--black);
+  color: var(--white);
+  font-weight: 500;
+}
+
+.insuranceBtn .icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.insuranceBtn .label {
+  font-size: 13px;
+}
+
+.form {
+  padding: 32px;
+}
+
+.formTitle {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--black);
+  margin-bottom: 24px;
+}
+
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gray-light);
+  margin-bottom: 8px;
+}
+
+.formGroup input[type="text"],
+.formGroup input[type="tel"],
+.formGroup input[type="email"] {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--off-white);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--black);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.formGroup input[type="text"]:focus,
+.formGroup input[type="tel"]:focus,
+.formGroup input[type="email"]:focus {
+  outline: none;
+  border-color: var(--black);
+}
+
+.formGroup input::placeholder {
+  color: var(--gray-light);
+}
+
+.radioGroup {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 10px 16px;
+  background: var(--off-white);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--gray);
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.radioLabel:hover {
+  border-color: var(--black);
+  background: var(--white);
+}
+
+.radioLabel input[type="radio"] {
+  accent-color: var(--black);
+  cursor: pointer;
+}
+
+.radioLabel input[type="radio"]:checked + span {
+  color: var(--black);
+  font-weight: 500;
+}
+
+.radioLabel span {
+  transition: color 0.2s;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fileUpload {
+  position: relative;
+}
+
+.fileInput {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.fileLabel {
+  display: block;
+  padding: 14px 16px;
+  background: var(--off-white);
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  color: var(--gray);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.fileLabel:hover {
+  border-color: var(--black);
+  background: var(--white);
+  color: var(--black);
+}
+
+.gdprCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 24px;
+  font-size: 12px;
+  color: var(--gray);
+  line-height: 1.5;
+}
+
+.gdprCheck input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: var(--black);
+  cursor: pointer;
+  min-width: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.gdprCheck label {
+  cursor: pointer;
+}
+
+.link {
+  color: var(--black);
+  text-decoration: underline;
+}
+
+.link:hover {
+  opacity: 0.7;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 16px 24px;
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submitBtn:hover {
+  background: #333;
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Success Screen */
+.successScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 40px;
+  min-height: 400px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  max-width: 600px;
+  width: 100%;
+  animation: fadeInUp 0.6s ease forwards;
+  margin-top: 60px;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.successIcon {
+  margin-bottom: 24px;
+  animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s forwards;
+  transform: scale(0);
+}
+
+@keyframes scaleIn {
+  to {
+    transform: scale(1);
+  }
+}
+
+.successTitle {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--black);
+  margin-bottom: 16px;
+}
+
+.successMessage {
+  font-size: 14px;
+  color: var(--gray);
+  line-height: 1.6;
+  max-width: 400px;
+  margin-bottom: 32px;
+}
+
+.btnSuccess {
+  background: var(--black);
+  color: var(--white);
+  border: none;
+  padding: 14px 36px;
+  border-radius: 2px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnSuccess:hover {
+  background: #333;
+}
+
+/* Ensure scrollability */
+.container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: rgba(17, 17, 17, 0.2);
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: rgba(17, 17, 17, 0.3);
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 30px 12px;
+  }
+
+  .insuranceTypes {
+    padding: 16px;
+  }
+
+  .insuranceBtn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .form {
+    padding: 24px 20px;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+
+  .successScreen {
+    padding: 40px 24px;
+    margin-top: 30px;
+  }
+
+  .successTitle {
+    font-size: 22px;
+  }
+
+  .successMessage {
+    font-size: 14px;
+  }
+}
